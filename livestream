@@ -117,4 +117,4 @@ get_live_url() {
 init_params "$@"
 get_live_url
 
-#$PLAYER "$LIVE_URL"
+$PLAYER "$LIVE_URL"
