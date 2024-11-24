@@ -1,7 +1,5 @@
 # LiveStream
 
-![shell](https://img.shields.io/badge/shell-blue)
-
 [中文说明](README.md) | 📕English
 
 LiveStream is a CLI tool that uses third-party players to play network live.    It reads the live stream address and provides it to the player for playback, meeting the need for live streaming in environments that are not Web/APP-based.

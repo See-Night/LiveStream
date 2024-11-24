@@ -1,7 +1,5 @@
 # LiveStream
 
-![shell](https://img.shields.io/badge/shell-blue)
-
 📕中文说明 | [English](README.en.md)
 
 LiveStream 是一个用于使用第三方播放器播放网络直播的命令行工具，可以读取直播流地址并提供给播放器进行播放，满足了非 Web/APP 环境下观看直播的需求。
