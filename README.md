@@ -24,7 +24,7 @@ Usage:
     livestream [options] [url]
 
 Supported platforms:
-    Bilibili, Douyu
+    bilibili, douyu
 
 Basic Options:
     -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc.
