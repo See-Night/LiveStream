@@ -95,7 +95,7 @@ get_live_url() {
 				exit 1
 			fi
 			v=$(echo $res | sed -r 's/.*v=([0-9]*).*/\1/g')
-			rb=$(echo -n "$ROOMID$did$now_timestamp$v" | openssl md5)			
+			rb=$(echo -n "$ROOMID$did$now_timestamp$v" | openssl md5 | awk '{print $2}')
 
 			# get params
 			js="$(echo $res | sed -r 's/\(function\ \((.*)rt;\}\)/function\ sign(\1rt;}/g' | sed "s/CryptoJS.MD5(cb).toString()/\"$rb\"/g") console.log(sign(\"$ROOMID\", \"$did\", \"$now_timestamp\"))"
@@ -103,8 +103,8 @@ get_live_url() {
 			params="$params&cdn=$cdn&rate=$rate"
 
 			room_info=$(curl -s -X POST "https://www.douyu.com/lapi/live/getH5Play/$ROOMID" -H 'content-type: application/x-www-form-urlencoded' --data-raw "$params")
-			rtmp_url=$(echo $room_info | jq .data.rtmp_url)
-			rtmp_live=$(echo $room_info | jq .data.rtmp_live)
+			rtmp_url=$(echo $room_info | jq -r .data.rtmp_url)
+			rtmp_live=$(echo $room_info | jq -r .data.rtmp_live)
 			if [[ $rtmp_url == "" || $rtmp_live == "" ]]
 			then
 				echo "Error: cannot get live stream url, the live room does not exist or is not currently open."
