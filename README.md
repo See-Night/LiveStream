@@ -27,6 +27,7 @@ Supported platforms:
     bilibili, douyu
 
 Basic Options:
+    --debug               Enable debug mod.
     -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc.
                           Or the path of player, such /path/to/player.
     -h, --help            Print help information
