@@ -61,3 +61,7 @@ These two scripts are mainly needed when decoding DouyuTV's live stream source, 
 ## Thanks
 
 The live stream source decoding rules of Douyu are based on the method of @wbt5, and I would like to express my gratitude here specially.
+
+## Open Source LICENSE
+
+[GPL-v3](LICENSE.md)

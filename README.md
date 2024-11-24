@@ -60,3 +60,7 @@ Basic Options:
 ## 致谢
 
 斗鱼的直播源解析规则参考了 [@wbt5](https://github.com/wbt5) 大佬的方法，特地在此表示感谢。
+
+## 开源协议
+
+[GPL-v3](LICENSE.md)
