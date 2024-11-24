@@ -16,7 +16,7 @@ You can clone this repository directly, or download the latest stable version fr
 
 You can run `livestream -h` to view the help: 
 
-```shell
+```
 LiveStream v0.0.1 Copyright © 2024-2024
 
 Usage:
