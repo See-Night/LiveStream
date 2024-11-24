@@ -13,7 +13,7 @@ help() {
 	echo "    livestream [options] [url]"
 	echo ""
 	echo "Supported platforms:"
-	echo "    Bilibili, Douyu"
+	echo "    bilibili, douyu"
 	echo ""
 	echo "Basic Options:"
 	echo "    -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc."
