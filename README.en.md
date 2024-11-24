@@ -42,7 +42,7 @@ For example:
 
 2. To watch `https://www.douyu.com/123456` with MPV player, you can run: 
 
-    ```shell
+    ```bash
     livestream -p mpv https://www.douyu.com/12345678
     ```
 
