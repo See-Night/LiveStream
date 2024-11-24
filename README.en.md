@@ -47,11 +47,8 @@ For example:
 
 ## Dependencies 
 
-- Python
+- Openssl
 - Nodejs
-
-> [!NOTE]
-These two scripts are mainly needed when decoding DouyuTV's live stream source, as DouyuTV's live stream source requires the platform's JavaScript script to run and needs to be encrypted with MD5. However, the encryption results obtained by using `md5sum` and OpenSSL are incorrect, so only Python's `hashlib` can be used for encryption. 
 
 ## Supported Platforms 
 

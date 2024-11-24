@@ -46,11 +46,8 @@ Basic Options:
     ```
 ## 依赖
 
-- Python
+- Openssl
 - Nodejs
-
-> [!NOTE]
-> 这两个主要是解析斗鱼的直播源时需要，斗鱼的直播源要运行平台提供的 JS 脚本，同时需要 MD5 加密，而使用 md5sum 和 openssl 加密的结果都不对，只能用 Python 的 `hashlib` 进行加密。
 
 ## 支持的平台
 
