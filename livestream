@@ -33,7 +33,7 @@ init_params() {
 		PLATFORM=${@:(-2):1}
 		if ! [[ $PLATFORM =~ ^(bilibili|douyu)$ ]]
 		then
-			echo "Parameter Error"
+			echo "Error: parameter error."
 			help
 			exit 1
 		fi
@@ -44,15 +44,15 @@ init_params() {
 	for arg in $@
 	do
 		case $arg in
-			-h|--help) 
+			"-h"|"--help") 
 				help
 				exit 1
 				;;
-			-p|--player) flag="player"
+			"-p"|"--player") flag="player"
 				;;
 			*)
 				case $flag in
-					player)
+					"player")
 						PLAYER=$arg
 						flag=""
 						;;
@@ -60,6 +60,13 @@ init_params() {
 				;;
 		esac
 	done
+
+	if [[ $PLAYER == "" || $ROOMID == "" || $PLATFORM == "" ]]
+	then
+		echo "Error: missing parameter."
+		help
+		exit 1
+	fi
 }
 
 get_live_url() {
@@ -110,4 +117,4 @@ get_live_url() {
 init_params "$@"
 get_live_url
 
-$PLAYER $LIVE_URL
+$PLAYER "$LIVE_URL"
