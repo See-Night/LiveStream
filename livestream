@@ -1,0 +1,113 @@
+#!/bin/sh
+PLATFORM=""
+ROOMID=""
+PLAYER=""
+LIVE_URL=""
+
+echo "LiveStream v0.0.1 Copyright © 2024-2024"
+
+help() {
+	echo ""
+	echo "Usage:"
+	echo "    livestream [options] [platform] [roomid]"
+	echo "    livestream [options] [url]"
+	echo ""
+	echo "Supported platforms:"
+	echo "    Bilibili, Douyu"
+	echo ""
+	echo "Basic Options:"
+	echo "    -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc."
+	echo "                          Or the path of player, such /path/to/player."
+	echo "    -h, --help            Print help information"
+}
+
+init_params() {
+	latest_param=${@:(-1):1}
+
+	if [[ $latest_param =~ ^https://[A-Za-z0-9\.-]*/[0-9]*$ ]]
+	then
+		PLATFORM=`echo $latest_param | sed -r "s/https:\/\/([A-Za-z0-9-]*\.)?([A-Za-z0-9-]*)\.[A-Za-z0-9-]*\/.*/\2/g"`
+		ROOMID=`echo $latest_param | sed -r "s/https:\/\/[A-Za-z0-9\.-]*\/([0-9]*)/\1/g"`
+	elif [[ $latest_param =~ ^[0-9]*$ ]]
+	then
+		PLATFORM=${@:(-2):1}
+		if ! [[ $PLATFORM =~ ^(bilibili|douyu)$ ]]
+		then
+			echo "Parameter Error"
+			help
+			exit 1
+		fi
+		ROOMID=$latest_param
+	fi
+	
+	flag=""
+	for arg in $@
+	do
+		case $arg in
+			-h|--help) 
+				help
+				exit 1
+				;;
+			-p|--player) flag="player"
+				;;
+			*)
+				case $flag in
+					player)
+						PLAYER=$arg
+						flag=""
+						;;
+				esac
+				;;
+		esac
+	done
+}
+
+get_live_url() {
+	case $PLATFORM in
+		bilibili)
+			real_room_id=$(curl -s "https://api.live.bilibili.com/room/v1/Room/get_info?room_id=$ROOMID" | jq .data.room_id)
+			LIVE_URL=$(curl -s "https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$real_room_id&quality=4" | jq -r .data.durl."[0]".url)
+			;;
+		douyu)
+			now_timestamp=$(date '+%s')
+			rate=0
+			cdn=
+			did="10000000000000000000000000001501"
+
+			# get parameter "v"
+			html=$(curl -s -X GET "https://www.douyu.com/$ROOMID")
+			js="$(echo $html | grep -o 'vdwdae325w_64we.*function ub98484234.*function' | sed -r 's/(.*)function/\1/g' | sed 's/function/\ function/g' | sed -r 's/eval[A-Za-z0-9\(\),;\}]*/strc;}/g') console.log(ub98484234());"
+			res=$(node -e "$js")
+			if [[ $? == 1 ]]
+			then
+				echo "Error: cannot get live stream url, the live room does not exist or is not currently open."
+				exit 1
+			fi
+			v=$(echo $res | sed -r 's/.*v=([0-9]*).*/\1/g')
+			rb=$(python -c "import hashlib; print(hashlib.md5(\"$ROOMID$did$now_timestamp$v\".encode('utf-8')).hexdigest())")
+
+			# get params
+			js="$(echo $res | sed -r 's/\(function\ \((.*)rt;\}\)/function\ sign(\1rt;}/g' | sed "s/CryptoJS.MD5(cb).toString()/\"$rb\"/g") console.log(sign(\"$ROOMID\", \"$did\", \"$now_timestamp\"))"
+			params=$(node -e "$js")
+			params="$params&cdn=$cdn&rate=$rate"
+
+			room_info=$(curl -s -X POST "https://www.douyu.com/lapi/live/getH5Play/$ROOMID" -H 'content-type: application/x-www-form-urlencoded' --data-raw "$params")
+			rtmp_url=$(echo $room_info | jq .data.rtmp_url)
+			rtmp_live=$(echo $room_info | jq .data.rtmp_live)
+			if [[ $rtmp_url == "" || $rtmp_live == "" ]]
+			then
+				echo "Error: cannot get live stream url, the live room does not exist or is not currently open."
+				exit 1
+			fi
+
+			LIVE_URL="$rtmp_url/$rtmp_live"
+			;;
+		*)
+			echo "LiveStream doesn't support this platform yet."
+	esac
+}
+
+init_params "$@"
+get_live_url
+
+$PLAYER $LIVE_URL
