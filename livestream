@@ -3,6 +3,7 @@ PLATFORM=""
 ROOMID=""
 PLAYER=""
 LIVE_URL=""
+DEBUG=0
 
 echo "LiveStream v0.0.1 Copyright © 2024-2024"
 
@@ -16,6 +17,7 @@ help() {
 	echo "    bilibili, douyu"
 	echo ""
 	echo "Basic Options:"
+	echo "    --debug               Enable debug mod."
 	echo "    -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc."
 	echo "                          Or the path of player, such /path/to/player."
 	echo "    -h, --help            Print help information"
@@ -49,6 +51,8 @@ init_params() {
 				exit 1
 				;;
 			"-p"|"--player") flag="player"
+				;;
+			"--debug") DEBUG=1
 				;;
 			*)
 				case $flag in
@@ -115,6 +119,17 @@ get_live_url() {
 }
 
 init_params "$@"
+if [[ $DEBUG == 1 ]]
+then
+	echo "[debug] Room ID: $ROOMID"
+	echo "[debug] Platform: $PLATFORM"
+	echo "[debug] Player: $PLAYER"
+fi
+
 get_live_url
+if [[ $DEBUG == 1 ]]
+then
+	echo "[debug] Live URL: $LIVE_URL"
+fi
 
 $PLAYER "$LIVE_URL"
