@@ -41,12 +41,12 @@ init_params() {
 		fi
 		ROOMID=$latest_param
 	fi
-	
+
 	flag=""
 	for arg in $@
 	do
 		case $arg in
-			"-h"|"--help") 
+			"-h"|"--help")
 				help
 				exit 1
 				;;
