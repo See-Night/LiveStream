@@ -17,7 +17,7 @@ help() {
 	echo "    bilibili, douyu"
 	echo ""
 	echo "Basic Options:"
-	echo "    --debug               Enable debug mod."
+	echo "    --debug               Enable debug mode."
 	echo "    -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc."
 	echo "                          Or the path of player, such /path/to/player."
 	echo "    -h, --help            Print help information"
@@ -43,7 +43,7 @@ init_params() {
 	fi
 
 	flag=""
-	for arg in $@
+	for arg in "$@"
 	do
 		case $arg in
 			"-h"|"--help")
