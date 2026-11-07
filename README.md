@@ -17,7 +17,7 @@ LiveStream 本质上是一个 Shell 脚本，你可以直接查看脚本中的�
 你可以运行 `livestream -h` 去查看帮助：
 
 ```
-LiveStream v0.0.1 Copyright © 2024-2024
+LiveStream v0.0.1 Copyright © 2024-2026
 
 Usage:
     livestream [options] [platform] [roomid]
