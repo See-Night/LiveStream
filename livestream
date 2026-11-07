@@ -1,11 +1,14 @@
-#!/bin/sh
+#!/usr/bin/env bash
 PLATFORM=""
 ROOMID=""
 PLAYER=""
 LIVE_URL=""
 DEBUG=0
+COOKIE_FROM=""
+COOKIE_FILE=""
+COOKIE_TEMP_DIR=""
 
-echo "LiveStream v0.0.1 Copyright © 2024-2024"
+echo "LiveStream v0.0.2 Copyright © 2024-2026"
 
 help() {
 	echo ""
@@ -18,66 +21,161 @@ help() {
 	echo ""
 	echo "Basic Options:"
 	echo "    --debug               Enable debug mode."
+	echo "    --cookie-from SOURCE  Read Bilibili cookies from a browser or Netscape cookie file."
+	echo "                          Browsers: firefox, chrome, chromium, brave, edge, opera,"
+	echo "                          safari, vivaldi, whale (requires Python 3 and yt-dlp)."
 	echo "    -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc."
 	echo "                          Or the path of player, such /path/to/player."
 	echo "    -h, --help            Print help information"
 }
 
 init_params() {
-	latest_param=${@:(-1):1}
-
-	if [[ $latest_param =~ ^https://[A-Za-z0-9\.-]*/[0-9]*$ ]]
-	then
-		PLATFORM=`echo $latest_param | sed -r "s/https:\/\/([A-Za-z0-9-]*\.)?([A-Za-z0-9-]*)\.[A-Za-z0-9-]*\/.*/\2/g"`
-		ROOMID=`echo $latest_param | sed -r "s/https:\/\/[A-Za-z0-9\.-]*\/([0-9]*)/\1/g"`
-	elif [[ $latest_param =~ ^[0-9]*$ ]]
-	then
-		PLATFORM=${@:(-2):1}
-		if ! [[ $PLATFORM =~ ^(bilibili|douyu)$ ]]
-		then
-			echo "Error: parameter error."
-			help
-			exit 1
-		fi
-		ROOMID=$latest_param
-	fi
-
-	flag=""
-	for arg in "$@"
-	do
-		case $arg in
-			"-h"|"--help")
-				help
-				exit 1
-				;;
-			"-p"|"--player") flag="player"
-				;;
-			"--debug") DEBUG=1
-				;;
-			*)
-				case $flag in
-					"player")
-						PLAYER=$arg
-						flag=""
-						;;
-				esac
-				;;
+	local -a positional=()
+	while (( $# )); do
+		case $1 in
+			-h|--help) help; exit 0 ;;
+			-p|--player|--cookie-from)
+				[[ $# -ge 2 && -n $2 && $2 != -* ]] || fail "$1 requires a value."
+				if [[ $1 == --cookie-from ]]; then
+					COOKIE_FROM=$2
+				else
+					PLAYER=$2
+				fi
+				shift 2
+				continue ;;
+			--debug) DEBUG=1 ;;
+			--) shift; positional+=("$@"); break ;;
+			-*) fail "Unknown option: $1" ;;
+			*) positional+=("$1") ;;
 		esac
+		shift
 	done
+	if [[ ${#positional[@]} == 1 && ${positional[0]} =~ ^https://([A-Za-z0-9.-]+)/([0-9]+)$ ]]; then
+		ROOMID=${BASH_REMATCH[2]}
+		case ${BASH_REMATCH[1]} in
+			bilibili.com|www.bilibili.com|live.bilibili.com) PLATFORM=bilibili ;;
+			douyu.com|www.douyu.com) PLATFORM=douyu ;;
+			*) fail "Unsupported live room URL." ;;
+		esac
+	elif [[ ${#positional[@]} == 2 && ${positional[0]} =~ ^(bilibili|douyu)$ && ${positional[1]} =~ ^[0-9]+$ ]]; then
+		PLATFORM=${positional[0]}
+		ROOMID=${positional[1]}
+	else
+		fail "Specify a supported room URL or a platform and room ID."
+	fi
+	[[ -n $PLAYER ]] || fail "Specify a player with -p PLAYER."
+	[[ -z $COOKIE_FROM || $PLATFORM == bilibili ]] || fail "--cookie-from is currently supported for Bilibili only."
+}
 
-	if [[ $PLAYER == "" || $ROOMID == "" || $PLATFORM == "" ]]
-	then
-		echo "Error: missing parameter."
-		help
-		exit 1
+fail() {
+	printf 'Error: %s\n' "$*" >&2
+	exit 1
+}
+
+cleanup_cookies() {
+	if [[ -n $COOKIE_TEMP_DIR ]]; then
+		rm -f -- "$COOKIE_TEMP_DIR/cookies.txt"
+		rmdir -- "$COOKIE_TEMP_DIR"
+		COOKIE_TEMP_DIR=""
+	fi
+}
+
+prepare_cookies() {
+	[[ -n $COOKIE_FROM ]] || return 0
+	if [[ -f $COOKIE_FROM && -r $COOKIE_FROM ]]; then
+		COOKIE_FILE=$COOKIE_FROM
+		return
+	fi
+	case $COOKIE_FROM in
+		firefox|chrome|chromium|brave|edge|opera|safari|vivaldi|whale) ;;
+		*) fail "Cookie source is not a supported browser or readable file: $COOKIE_FROM" ;;
+	esac
+	command -v python3 >/dev/null || fail "Reading browser cookies requires Python 3 and its yt-dlp package."
+	COOKIE_TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/livestream-cookies.XXXXXXXX") || fail "Cannot create temporary Cookie directory."
+	COOKIE_FILE="$COOKIE_TEMP_DIR/cookies.txt"
+	python3 - "$COOKIE_FROM" "$COOKIE_FILE" <<'PY' || exit 1
+import os
+import sys
+
+try:
+    from yt_dlp.cookies import YoutubeDLCookieJar, extract_cookies_from_browser
+except ImportError:
+    sys.exit('Error: Reading browser cookies requires the yt-dlp Python package.')
+
+class QuietLogger:
+    def debug(self, *args, **kwargs):
+        pass
+    info = warning = error = debug
+
+browser, filename = sys.argv[1:]
+try:
+    source = extract_cookies_from_browser(browser, logger=QuietLogger())
+    cookies = YoutubeDLCookieJar(filename)
+    for cookie in source:
+        domain = cookie.domain.lstrip('.').lower()
+        if (domain == 'bilibili.com' or domain.endswith('.bilibili.com')) and not cookie.is_expired():
+            cookies.set_cookie(cookie)
+    if not len(cookies):
+        sys.exit(f'Error: No unexpired Bilibili cookies found in {browser}. Log in first.')
+    fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(fd)
+    cookies.save(ignore_discard=True, ignore_expires=False)
+except Exception:
+    sys.exit(f'Error: Cannot read cookies from {browser}. Check that its profile is accessible and logged in.')
+PY
+}
+
+bilibili_api() {
+	local response
+	local -a args=(--fail --silent --show-error --connect-timeout 10 --max-time 20
+		--user-agent 'Mozilla/5.0' --referer "https://live.bilibili.com/$ROOMID")
+	if [[ -n $COOKIE_FILE ]]; then
+		args+=(--cookie "$COOKIE_FILE")
+	fi
+	response=$(curl "${args[@]}" -- "$1") || fail "Cannot contact Bilibili API."
+	if ! jq -e '.code == 0' >/dev/null 2>&1 <<< "$response"; then
+		local message
+		message=$(jq -r '.message // .msg // "invalid API response"' 2>/dev/null <<< "$response")
+		fail "Bilibili: ${message:-invalid API response}"
+	fi
+	printf '%s\n' "$response"
+}
+
+get_bilibili_url() {
+	local room_info real_room_id endpoint play_info target selected actual description
+	room_info=$(bilibili_api "https://api.live.bilibili.com/room/v1/Room/get_info?room_id=$ROOMID") || exit 1
+	real_room_id=$(jq -er '.data.room_id | select(type == "number" and . > 0)' <<< "$room_info") || fail "Bilibili room does not exist."
+	[[ $(jq -r '.data.live_status' <<< "$room_info") == 1 ]] || fail "Bilibili room is not currently live."
+	endpoint="https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?room_id=$real_room_id&protocol=0,1&format=0,1,2&codec=0,1&platform=web"
+	play_info=$(bilibili_api "$endpoint&qn=10000") || exit 1
+	# The global quality descriptions can include unavailable tiers. Use the
+	# qualities advertised by this room's streams instead.
+	target=$(jq -r '[.data.playurl_info.playurl.stream[]?.format[]?.codec[]?.accept_qn[]?] | max // 10000' <<< "$play_info")
+	if [[ $target != 10000 ]]; then
+		play_info=$(bilibili_api "$endpoint&qn=$target") || exit 1
+	fi
+	# Quality first; at equal quality prefer FLV and AVC for player compatibility.
+	selected=$(jq -cer '
+		[.data.playurl_info.playurl.stream[]? as $s
+		 | $s.format[]? as $f | $f.codec[]? as $c | $c.url_info[]?
+		 | select((.host | type) == "string" and (.host | test("^https?://")))
+		 | select(($c.base_url | type) == "string" and ($c.current_qn | type) == "number")
+		 | {url: (.host + $c.base_url + (.extra // "")), qn: $c.current_qn,
+		    flv: ($f.format_name == "flv"), avc: ($c.codec_name == "avc")}]
+		| sort_by([.qn, .flv, .avc]) | last // empty' <<< "$play_info") || fail "Bilibili returned no playable stream."
+	LIVE_URL=$(jq -r '.url' <<< "$selected")
+	actual=$(jq -r '.qn' <<< "$selected")
+	description=$(jq -r --argjson qn "$actual" '[.data.playurl_info.playurl.g_qn_desc[]? | select(.qn == $qn) | .desc][0] // "unknown"' <<< "$play_info")
+	printf 'Bilibili quality: %s (qn=%s)\n' "$description" "$actual" >&2
+	if (( actual < target )); then
+		printf 'Warning: Bilibili returned qn=%s instead of qn=%s. Use --cookie-from BROWSER_OR_FILE with a logged-in Bilibili Cookie.\n' "$actual" "$target" >&2
 	fi
 }
 
 get_live_url() {
 	case $PLATFORM in
 		bilibili)
-			real_room_id=$(curl -s "https://api.live.bilibili.com/room/v1/Room/get_info?room_id=$ROOMID" | jq .data.room_id)
-			LIVE_URL=$(curl -s "https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$real_room_id&quality=4" | jq -r .data.durl."[0]".url)
+			get_bilibili_url
 			;;
 		douyu)
 			now_timestamp=$(date '+%s')
@@ -118,7 +216,11 @@ get_live_url() {
 	esac
 }
 
+trap cleanup_cookies EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 init_params "$@"
+prepare_cookies
 if [[ $DEBUG == 1 ]]
 then
 	echo "[debug] Room ID: $ROOMID"
@@ -127,9 +229,10 @@ then
 fi
 
 get_live_url
+cleanup_cookies
 if [[ $DEBUG == 1 ]]
 then
-	echo "[debug] Live URL: $LIVE_URL"
+	echo "[debug] Live URL: ${LIVE_URL%%\?*}?<REDACTED>"
 fi
 
-$PLAYER "$LIVE_URL"
+"$PLAYER" "$LIVE_URL"

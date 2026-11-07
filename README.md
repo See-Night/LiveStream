@@ -28,6 +28,7 @@ Supported platforms:
 
 Basic Options:
     --debug               Enable debug mod.
+    --cookie-from SOURCE  Read Bilibili cookies from a browser or Netscape cookie file.
     -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc.
                           Or the path of player, such /path/to/player.
     -h, --help            Print help information
@@ -47,8 +48,35 @@ Basic Options:
     ```
 ## 依赖
 
+- Bash、curl、jq
 - Openssl
 - Nodejs
+
+## Bilibili 最高画质与登录
+
+B 站接口会对未登录请求降低画质。脚本使用新版取流接口，按直播间各路流的
+`accept_qn` 选择最高档位，并显示实际返回画质；如果服务端降级，会提示补充或刷新 Cookie。
+
+使用可选参数 `--cookie-from <浏览器名或 Cookie 文件路径>` 提供登录态。
+不带此参数时按匿名方式取流，不读取默认 Cookie 文件或环境变量。
+
+```shell
+# 使用 Firefox 当前的 B 站登录态
+livestream --cookie-from firefox -p mpv bilibili 6
+
+# 使用 Netscape 格式的 Cookie 文件
+livestream --cookie-from "$HOME/path/to/cookies.txt" -p mpv bilibili 6
+
+# 不使用 Cookie
+livestream -p mpv bilibili 6
+```
+
+支持的浏览器名：`firefox`、`chrome`、`chromium`、`brave`、`edge`、`opera`、
+`safari`、`vivaldi`、`whale`（取决于本机安装及系统支持）。
+从浏览器读取需要 Python 3 及其 `yt-dlp` 包，会使用浏览器的默认配置选择方式，
+只将未过期的 B 站 Cookie 保存到权限为 `0600` 的临时文件，取流后自动删除。
+浏览器需要已登录 B 站；失效后在浏览器重新登录即可，无需单独刷新脚本。
+从 Cookie 文件读取不需要 Python 或 yt-dlp，也不会修改原文件。
 
 ## 支持的平台
 

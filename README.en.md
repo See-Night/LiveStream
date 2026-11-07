@@ -28,6 +28,7 @@ Supported platforms:
 
 Basic Options:
     --debug               Enable debug mod.
+    --cookie-from SOURCE  Read Bilibili cookies from a browser or Netscape cookie file.
     -p,--player PLAYER    Play with the specified video player. Such as mpv, vlc, etc.
                           Or the path of player, such /path/to/player.
     -h, --help            Print help information
@@ -46,8 +47,34 @@ For example:
     livestream -p mpv https://www.douyu.com/12345678
     ```
 
-## Dependencies 
+## Bilibili quality and login
 
+Bilibili limits anonymous requests to lower quality. The script uses the newer
+playback API, requests the highest quality advertised by this room's streams,
+prints the actual quality, and warns if the server downgrades it.
+
+Use the optional `--cookie-from <browser or cookie file path>` argument to
+provide login cookies. Without it, requests are anonymous; no default cookie
+file or cookie environment variable is read.
+
+```shell
+livestream --cookie-from firefox -p mpv bilibili 6
+livestream --cookie-from "$HOME/path/to/cookies.txt" -p mpv bilibili 6
+livestream -p mpv bilibili 6
+```
+
+Supported browser names: `firefox`, `chrome`, `chromium`, `brave`, `edge`, `opera`,
+`safari`, `vivaldi`, and `whale`, subject to local installation and OS support.
+Browser extraction requires Python 3 with the `yt-dlp` package. It uses yt-dlp's
+default profile selection and saves only unexpired Bilibili cookies to a temporary
+file with permissions `0600`, which is removed after fetching the stream URL.
+Log in again in the browser when the session expires; no refresh script is needed.
+Cookie files must use Netscape format and are read without modification. Reading
+a cookie file requires neither Python nor yt-dlp.
+
+## Dependencies
+
+- Bash, curl, jq
 - Openssl
 - Nodejs
 
